@@ -4,6 +4,10 @@ shards:
     git: https://github.com/axentro/axentro-util.git
     version: 0.1.0
 
+  baked_file_system:
+    git: https://github.com/schovi/baked_file_system.git
+    version: 0.9.8
+
   crest:
     git: https://github.com/mamantoha/crest.git
     version: 0.26.4

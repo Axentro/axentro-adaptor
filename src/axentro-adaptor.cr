@@ -15,13 +15,25 @@ require "json"
 require "router"
 require "axentro-util"
 require "option_parser"
+require "baked_file_system"
 require "./crypto"
+require "./virtual_file_system/*"
 
 wallet = nil
 node_url = nil
+app_port = nil
+app_host = nil
 
 OptionParser.parse do |parser|
   parser.banner = "Usage: "
+
+  parser.on("-p PORT", "--port=PORT", "The port to start the app on e.g. -p 8001 (defaults to port 8008)") do |port|
+    app_port = port
+  end
+
+  parser.on("-b BIND", "--bind=BIND", "The host to start the app on e.g -b 192.0.145.1 (defaults to localhost)") do |host|
+    app_host = host
+  end
 
   parser.on("-w WALLET", "--wallet=WALLET", "Provide a wallet to send all transactions from") do |w|
     wallet = w
@@ -78,7 +90,7 @@ class WebServer
 
   @wallet : Wallet?
 
-  def initialize(@node_url : String?, @wallet_path : String?)
+  def initialize(@node_url : String?, @wallet_path : String?, @app_host : String?, @app_port : String?)
     @wallet = load_wallet
   end
 
@@ -95,13 +107,14 @@ class WebServer
 
   def draw_routes
     get "/" do |context, params|
-      context.response.print "Running"
+      context.response.headers["Content-Type"] = "text/html"
+      context.response << FileStorage.get("/index.html").gets_to_end
       context
     end
 
     post "/transaction/send-from-wallet" do |context, params|
       if @node_url.nil? || @wallet.nil?
-        result = {result: "error", message: "to use this endpoint you must start this app with --node=some-node-url --wallet=path/to/wallet.json"}.to_json
+        result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url --wallet=path/to/wallet.json"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
@@ -112,7 +125,7 @@ class WebServer
           transaction_id = Axentro::Util.post_transaction(transaction, @node_url.not_nil!)
 
           if transaction_id.nil?
-            result = {result: "error", message: "error sending transaction to host: #{@node_url.not_nil!}, check the logs"}.to_json
+            result = {status: "error", result: "error sending transaction to host: #{@node_url.not_nil!}, check the logs"}.to_json
             context.response.status_code = 500
           else
             result = {status: "success", result: {transaction: transaction_id}}.to_json
@@ -126,7 +139,7 @@ class WebServer
 
     post "/transaction/signed-from-wallet" do |context, params|
       if @wallet.nil?
-        result = {result: "error", message: "to use this endpoint you must start this app with --wallet=path/to/wallet.json"}.to_json
+        result = {status: "error", result: "to use this endpoint you must start this app with --wallet=path/to/wallet.json"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
@@ -149,7 +162,7 @@ class WebServer
           transaction_id = Axentro::Util.post_transaction(transaction, _node_url)
 
           if transaction_id.nil?
-            result = {result: "error", message: "error sending transaction to host: #{_node_url}, check the logs"}.to_json
+            result = {status: "error", result: "error sending transaction to host: #{_node_url}, check the logs"}.to_json
             context.response.status_code = 500
           else
             result = {status: "success", result: {transaction: transaction_id}}.to_json
@@ -159,7 +172,7 @@ class WebServer
           context
         end
       else
-        result = {result: "error", message: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
+        result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
@@ -171,12 +184,12 @@ class WebServer
         onParams(context, TransactionRequest) do |request|
           transaction = Axentro::Util.create_signed_send_transaction(request.from_address, request.from_public_key, request.wif, request.to_address, request.amount)
 
-          result = {status: "success", result: {transaction: transaction}}.to_json
+          result = {status: "success", result: JSON.parse(transaction)}.to_json
           context.response.print result
           context
         end
       else
-        result = {result: "error", message: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
+        result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
@@ -185,42 +198,28 @@ class WebServer
 
     get "/wallet/create/:amount" do |context, params|
       if params["amount"].nil?
-        result = {result: "error", message: "you must supply the amount e.g. wallet/create/12"}.to_json
+        result = {status: "error", result: "you must supply the amount e.g. wallet/create/12"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
       else
         amount = params["amount"].not_nil!.to_i
-        generated_wallets = (0..amount).map { |n| generate_standard_wallet }
-        result = {result: "success", wallets: generated_wallets}.to_json
+        generated_wallets = (1..amount).map { |n| generate_standard_wallet }
+        result = {status: "success", result: { wallets: generated_wallets}}.to_json
         context.response.print result
         context
       end
     end
 
     get "/wallet/hd/create" do |context, params|
-      result = {result: "success", wallet: generate_hd_wallet}.to_json
+      result = {status: "success", result: { wallet: generate_hd_wallet }}.to_json
       context.response.print result
       context
     end
 
-    get "/wallet/hd/from_seed/:seed/amount/:amount" do |context, params|
-      if params["amount"].nil? || params["seed"].nil?
-        result = {result: "error", message: "you must supply the seed and amount"}.to_json
-        context.response.status_code = 500
-        context.response.print result
-        context
-      else
-        seed = params["seed"].not_nil!
-        amount = params["amount"].not_nil!.to_i
-        context.response.print generate_hd_wallets(seed, amount).to_json
-        context
-      end
-    end
-
     get "/wallet/hd/from_seed/:seed/amount/:amount/from_derivation/:derivation" do |context, params|
       if params["amount"].nil? || params["seed"].nil? || params["derivation"].nil?
-        result = {result: "error", message: "you must supply the seed, derivation and amount, derivation is e.g. 1`"}.to_json
+        result = {status: "error", result: "you must supply the seed, derivation and amount, derivation is e.g. 1`"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
@@ -235,35 +234,42 @@ class WebServer
 
     get "/address/validate/:address" do |context, params|
       if params["address"].nil?
-        result = {result: "error", message: "you must supply the wallet address`"}.to_json
+        result = {status: "error", result: "you must supply the wallet address`"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
       else
         address = params["address"].not_nil!
         is_valid_address = Address.is_valid?(address)
-        result = {result: "success", is_valid: is_valid_address}.to_json
+        result = {status: "success", result: { is_valid: is_valid_address }}.to_json
         context.response.print result
         context
       end
     end
 
-    get "/address/validate/:hra" do |context, params|
+    get "/hra/validate/:hra" do |context, params|
       if _node_url = @node_url
-        if params["domain"].nil?
-          result = {result: "error", message: "you must supply the human readable address`"}.to_json
+        if params["hra"].nil?
+          result = {status: "error", result: "you must supply either an address or a human readable address`"}.to_json
           context.response.status_code = 500
           context.response.print result
           context
         else
           hra = params["hra"].not_nil!
-          # get https://mainnet.axentro.io/api/v1/hra/lookup/kingsley.ax  
-          # result = {result: "success", is_valid: is_valid_address}.to_json
-          context.response.print "result"
+          if hra.ends_with?(".ax")
+            result = Crest.get("#{_node_url}/api/v1/hra/#{hra}")
+            parsed = JSON.parse(result.body)
+            is_valid = parsed["result"]["resolved"]
+            result = {status: "success", result: { is_valid: is_valid }}.to_json
+          else
+            is_valid_address = Address.is_valid?(hra)
+            result = {status: "success", result: { is_valid: is_valid_address }}.to_json
+          end
+          context.response.print result
           context
         end
       else
-        result = {result: "error", message: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
+        result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
@@ -273,7 +279,10 @@ class WebServer
 
   def run
     server = HTTP::Server.new(route_handler)
-    server.bind_tcp 3000
+    server_host = @app_host || "localhost"
+    server_port = @app_port.try(&.to_i) || 8008
+    server.bind_tcp(server_host, server_port)
+    puts "Starting Axentro Adaptor server on http://#{server_host}:#{server_port}"
     server.listen
   end
 
@@ -313,9 +322,9 @@ class WebServer
     }
   end
 
-  def generate_hd_wallets(seed, amount, derivation_start = 1)
-    total = derivation_start + amount
-    wallets = (derivation_start..total).to_a.map do |n|
+  def generate_hd_wallets(seed, amount, derivation_start)
+    wallets = (0..(Math.max(1,amount-1))).to_a.map do |n|
+      n = n + derivation_start
       derivation = "m/#{n}'"
       keys = KeyRing.generate_hd(seed, derivation)
 
@@ -326,13 +335,13 @@ class WebServer
         address:    keys.address.as_hex,
       }
     end
-    {result: "success", seed: seed, wallets: wallets}
+    {status: "success", result: { seed: seed, wallets: wallets }}
   end
 
   include Axentro::Core
   include Axentro::Core::Keys
 end
 
-web_server = WebServer.new(node_url, wallet)
+web_server = WebServer.new(node_url, wallet, app_host, app_port)
 web_server.draw_routes
 web_server.run
