@@ -11,7 +11,7 @@
 # Removal or modification of this copyright notice is prohibited.
 
 class FileStorage
-    extend BakedFileSystem
-  
-    bake_folder "./api"
-  end
+  extend BakedFileSystem
+
+  bake_folder "./api"
+end

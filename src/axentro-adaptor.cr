@@ -205,16 +205,23 @@ class WebServer
       else
         amount = params["amount"].not_nil!.to_i
         generated_wallets = (1..amount).map { |n| generate_standard_wallet }
-        result = {status: "success", result: { wallets: generated_wallets}}.to_json
+        result = {status: "success", result: {wallets: generated_wallets}}.to_json
         context.response.print result
         context
       end
     end
 
-    get "/wallet/hd/create" do |context, params|
-      result = {status: "success", result: { wallet: generate_hd_wallet }}.to_json
-      context.response.print result
-      context
+    get "/wallet/hd/create/:amount" do |context, params|
+      if params["amount"].nil?
+        result = {status: "error", result: "you must supply the amount e.g. wallet/hd/create/12"}.to_json
+        context.response.status_code = 500
+        context.response.print result
+        context
+      else
+        amount = params["amount"].not_nil!.to_i
+        context.response.print generate_multi_hd_wallets(amount).to_json
+        context
+      end
     end
 
     get "/wallet/hd/from_seed/:seed/amount/:amount/from_derivation/:derivation" do |context, params|
@@ -241,7 +248,7 @@ class WebServer
       else
         address = params["address"].not_nil!
         is_valid_address = Address.is_valid?(address)
-        result = {status: "success", result: { is_valid: is_valid_address }}.to_json
+        result = {status: "success", result: {is_valid: is_valid_address}}.to_json
         context.response.print result
         context
       end
@@ -260,10 +267,10 @@ class WebServer
             result = Crest.get("#{_node_url}/api/v1/hra/#{hra}")
             parsed = JSON.parse(result.body)
             is_valid = parsed["result"]["resolved"]
-            result = {status: "success", result: { is_valid: is_valid }}.to_json
+            result = {status: "success", result: {is_valid: is_valid}}.to_json
           else
             is_valid_address = Address.is_valid?(hra)
-            result = {status: "success", result: { is_valid: is_valid_address }}.to_json
+            result = {status: "success", result: {is_valid: is_valid_address}}.to_json
           end
           context.response.print result
           context
@@ -322,8 +329,23 @@ class WebServer
     }
   end
 
+  def generate_multi_hd_wallets(amount)
+    wallets = (1..amount).to_a.map do |n|
+      derivation = "m/#{n}'"
+      keys = KeyRing.generate_hd
+
+      {seed:       keys.seed,
+       derivation: "m/0'",
+       public_key: keys.public_key.as_hex,
+       wif:        keys.wif.as_hex,
+       address:    keys.address.as_hex,
+      }
+    end
+    {status: "success", result: {wallets: wallets}}
+  end
+
   def generate_hd_wallets(seed, amount, derivation_start)
-    wallets = (0..(Math.max(1,amount-1))).to_a.map do |n|
+    wallets = (0..(Math.max(1, amount - 1))).to_a.map do |n|
       n = n + derivation_start
       derivation = "m/#{n}'"
       keys = KeyRing.generate_hd(seed, derivation)
@@ -335,7 +357,7 @@ class WebServer
         address:    keys.address.as_hex,
       }
     end
-    {status: "success", result: { seed: seed, wallets: wallets }}
+    {status: "success", result: {seed: seed, wallets: wallets}}
   end
 
   include Axentro::Core
