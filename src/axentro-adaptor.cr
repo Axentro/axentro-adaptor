@@ -10,7 +10,6 @@
 #
 # Removal or modification of this copyright notice is prohibited.
 
-require "kemal"
 require "json"
 require "router"
 require "axentro-util"
