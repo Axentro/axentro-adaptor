@@ -36,6 +36,14 @@ shards install
 shards build --release --no-debug
 ```
 
+## Updating
+```bash
+cd axentro-adaptor
+git pull https://github.com/Axentro/axentro-adaptor.git
+shards install
+shards build --release --no-debug
+```
+
 ## Usage
 
 ```bash
