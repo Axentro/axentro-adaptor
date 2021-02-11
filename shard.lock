@@ -5,12 +5,12 @@ shards:
     version: 0.1.0
 
   baked_file_system:
-    git: https://github.com/schovi/baked_file_system.git
-    version: 0.9.8
+    git: https://github.com/axentro/baked_file_system.git
+    version: 0.9.9
 
   crest:
     git: https://github.com/mamantoha/crest.git
-    version: 0.26.4
+    version: 0.26.7
 
   ed25519-hd:
     git: https://github.com/axentro/ed25519-hd.git
@@ -18,11 +18,11 @@ shards:
 
   http-client-digest_auth:
     git: https://github.com/mamantoha/http-client-digest_auth.git
-    version: 0.5.0
+    version: 0.6.0
 
   http_proxy:
     git: https://github.com/mamantoha/http_proxy.git
-    version: 0.7.3
+    version: 0.8.0
 
   monocypher:
     git: https://github.com/axentro/monocypher.cr.git
@@ -30,7 +30,7 @@ shards:
 
   radix:
     git: https://github.com/luislavena/radix.git
-    version: 0.3.9
+    version: 0.4.0
 
   router:
     git: https://github.com/tbrand/router.cr.git

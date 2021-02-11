@@ -256,7 +256,7 @@ class WebServer
     get "/hra/validate/:hra" do |context, params|
       if _node_url = @node_url
         if params["hra"].nil?
-          result = {status: "error", result: "you must supply either an address or a human readable address`"}.to_json
+          result = {status: "error", result: "you must supply either an address or a human readable address"}.to_json
           context.response.status_code = 500
           context.response.print result
           context
@@ -277,6 +277,20 @@ class WebServer
       else
         result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url"}.to_json
         context.response.status_code = 500
+        context.response.print result
+        context
+      end
+    end
+# TTA4ODRmMzdjZjM2NmNhOTlkZGEwZmE0YzA3NmZjYjgxZWUwYjkyNDc1OTBmZWQxNmU5ODQ1MWMwMGIyNzBlMmEyYmU4ZjVk
+    get "/wallet/recover/from_wif/:wif" do |context, params|
+      if params["wif"].nil?
+        result = {status: "error", result: "you must supply a wif"}.to_json
+        context.response.status_code = 500
+        context.response.print result
+        context
+      else
+        wif = params["wif"].not_nil!
+        result = {status: "success", result: wallet_from_wif(wif)}.to_json
         context.response.print result
         context
       end
@@ -357,6 +371,17 @@ class WebServer
       }
     end
     {status: "success", result: {seed: seed, wallets: wallets}}
+  end
+
+  def wallet_from_wif(_wif)
+    wif = Wif.new(_wif)
+    public_key = wif.public_key
+    address = wif.address
+    {
+      public_key: public_key.as_hex,
+      wif:        wif.as_hex,
+      address:    address.as_hex,
+    }
   end
 
   include Axentro::Core
