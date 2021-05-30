@@ -63,8 +63,8 @@ jobs:
 
       - name: Build axentro-adaptor binary
         run: |
-          mkdir build
-          crystal build src/axentro-adaptor.cr -o build/axentro-adaptor-${GITHUB_REF_SLUG}-linux --release --no-debug --static   
+          mkdir build 
+          docker-compose run --rm app crystal build src/axentro-adaptor.cr -o build/axentro-adaptor-${GITHUB_REF_SLUG}-linux --release --no-debug --static
 
       - name: Upload to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/')
