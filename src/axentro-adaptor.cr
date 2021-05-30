@@ -104,21 +104,22 @@ class WebServer
     end
   end
 
+  # ameba:disable Metrics/CyclomaticComplexity
   def draw_routes
-    get "/" do |context, params|
+    get "/" do |context, _|
       context.response.headers["Content-Type"] = "text/html"
       context.response << FileStorage.get("/index.html").gets_to_end
       context
     end
 
-    post "/transaction/send-from-wallet" do |context, params|
+    post "/transaction/send-from-wallet" do |context, _|
       if @node_url.nil? || @wallet.nil?
         result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url --wallet=path/to/wallet.json"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
       else
-        onParams(context, MinimalTransactionRequest) do |request|
+        on_params(context, MinimalTransactionRequest) do |request|
           wallet = @wallet.not_nil!
           transaction = Axentro::Util.create_signed_send_transaction(wallet.address, wallet.public_key, wallet.wif, request.to_address, request.amount)
           transaction_id = Axentro::Util.post_transaction(transaction, @node_url.not_nil!)
@@ -136,14 +137,14 @@ class WebServer
       end
     end
 
-    post "/transaction/signed-from-wallet" do |context, params|
+    post "/transaction/signed-from-wallet" do |context, _|
       if @wallet.nil?
         result = {status: "error", result: "to use this endpoint you must start this app with --wallet=path/to/wallet.json"}.to_json
         context.response.status_code = 500
         context.response.print result
         context
       else
-        onParams(context, MinimalTransactionRequest) do |request|
+        on_params(context, MinimalTransactionRequest) do |request|
           wallet = @wallet.not_nil!
           transaction = Axentro::Util.create_signed_send_transaction(wallet.address, wallet.public_key, wallet.wif, request.to_address, request.amount)
           result = {status: "success", result: {transaction: transaction}}.to_json
@@ -154,9 +155,9 @@ class WebServer
       end
     end
 
-    post "/transaction/send" do |context, params|
+    post "/transaction/send" do |context, _|
       if _node_url = @node_url
-        onParams(context, TransactionRequest) do |request|
+        on_params(context, TransactionRequest) do |request|
           transaction = Axentro::Util.create_signed_send_transaction(request.from_address, request.from_public_key, request.wif, request.to_address, request.amount)
           transaction_id = Axentro::Util.post_transaction(transaction, _node_url)
 
@@ -178,9 +179,9 @@ class WebServer
       end
     end
 
-    post "/transaction/signed" do |context, params|
+    post "/transaction/signed" do |context, _|
       if _node_url = @node_url
-        onParams(context, TransactionRequest) do |request|
+        on_params(context, TransactionRequest) do |request|
           transaction = Axentro::Util.create_signed_send_transaction(request.from_address, request.from_public_key, request.wif, request.to_address, request.amount)
 
           result = {status: "success", result: JSON.parse(transaction)}.to_json
@@ -203,7 +204,7 @@ class WebServer
         context
       else
         amount = params["amount"].not_nil!.to_i
-        generated_wallets = (1..amount).map { |n| generate_standard_wallet }
+        generated_wallets = (1..amount).map { generate_standard_wallet }
         result = {status: "success", result: {wallets: generated_wallets}}.to_json
         context.response.print result
         context
@@ -307,8 +308,8 @@ class WebServer
   end
 
   # ----- util -----
-  def onParams(context, klass : T.class, &block) forall T
-    yield klass.from_json(contextToJson(context))
+  def on_params(context, klass : T.class, &block) forall T
+    yield klass.from_json(context_to_json(context))
   rescue e : Exception
     context.response.status_code = 500
     context.response.print %Q{{"result": "error", "message": "#{e.message || "unknow error"}"}}
@@ -316,7 +317,7 @@ class WebServer
     context
   end
 
-  def contextToJson(context)
+  def context_to_json(context)
     context.request.body.not_nil!.gets_to_end
   end
 
@@ -343,8 +344,7 @@ class WebServer
   end
 
   def generate_multi_hd_wallets(amount)
-    wallets = (1..amount).to_a.map do |n|
-      derivation = "m/#{n}'"
+    wallets = (1..amount).to_a.map do
       keys = KeyRing.generate_hd
 
       {seed:       keys.seed,
