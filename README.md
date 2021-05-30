@@ -1,4 +1,7 @@
 # Axentro Adatpor API
+
+[![Linux CI](https://github.com/Axentro/axentro-adaptor/actions/workflows/linux-ci.yml/badge.svg)](https://github.com/Axentro/axentro-adaptor/actions/workflows/linux-ci.yml)
+
 This is a local service you can run that provides a REST API that can do the following things:
 
 * signed & send transactions
