@@ -1,5 +1,5 @@
 name: axentro-adaptor
-version: 0.1.0
+version: 0.1.1
 
 authors:
   - Kingsley Hendrickse <kingsley@axentro.io>
@@ -8,7 +8,7 @@ targets:
   axentro-adaptor:
     main: src/axentro-adaptor.cr
 
-crystal: 0.36.1
+crystal: 1.0.0
 
 dependencies:
   router:
@@ -20,4 +20,8 @@ dependencies:
   baked_file_system:
     github: axentro/baked_file_system
 
+development_dependencies:
+    ameba:
+      github: veelenga/ameba
+      
 license: MIT

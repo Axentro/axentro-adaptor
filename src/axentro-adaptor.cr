@@ -281,7 +281,7 @@ class WebServer
         context
       end
     end
-# TTA4ODRmMzdjZjM2NmNhOTlkZGEwZmE0YzA3NmZjYjgxZWUwYjkyNDc1OTBmZWQxNmU5ODQ1MWMwMGIyNzBlMmEyYmU4ZjVk
+    # TTA4ODRmMzdjZjM2NmNhOTlkZGEwZmE0YzA3NmZjYjgxZWUwYjkyNDc1OTBmZWQxNmU5ODQ1MWMwMGIyNzBlMmEyYmU4ZjVk
     get "/wallet/recover/from_wif/:wif" do |context, params|
       if params["wif"].nil?
         result = {status: "error", result: "you must supply a wif"}.to_json
