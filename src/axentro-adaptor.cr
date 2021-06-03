@@ -112,6 +112,11 @@ class WebServer
       context
     end
 
+    get "/version" do |context, _|
+      context.response.print "v0.1.3"
+      context
+    end
+
     post "/transaction/send-from-wallet" do |context, _|
       if @node_url.nil? || @wallet.nil?
         result = {status: "error", result: "to use this endpoint you must start this app with --node=some-node-url --wallet=path/to/wallet.json"}.to_json
@@ -282,7 +287,7 @@ class WebServer
         context
       end
     end
-    # TTA4ODRmMzdjZjM2NmNhOTlkZGEwZmE0YzA3NmZjYjgxZWUwYjkyNDc1OTBmZWQxNmU5ODQ1MWMwMGIyNzBlMmEyYmU4ZjVk
+
     get "/wallet/recover/from_wif/:wif" do |context, params|
       if params["wif"].nil?
         result = {status: "error", result: "you must supply a wif"}.to_json
